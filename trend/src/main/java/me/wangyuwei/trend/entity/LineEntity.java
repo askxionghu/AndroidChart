@@ -1,6 +1,5 @@
 package me.wangyuwei.trend.entity;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**

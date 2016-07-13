@@ -3,6 +3,7 @@ package me.wangyuwei.trend.chart;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.util.AttributeSet;
@@ -19,18 +20,21 @@ import me.wangyuwei.trend.interf.IQuadrant;
  */
 public class Chart extends View implements IChart {
 
-    private float borderWidth = 1f;
-    protected double prevClosePrice;
-    protected int minDisplayNum = 10;
+    private float mBorderWidth = 1f;
+    protected double mPrevClosePrice;
+    protected int mMinDisplayNum = 10;
     protected int maxDisplayNum = 500;
-    protected int displayFrom = 0;
-    protected int displayNumber = 0;
+    protected int mDisplayFrom = 0;
+    protected int mDisplayNumber = 0;
 
-    protected PointF touchPoint;
+    protected PointF mTouchPoint;
     /* 经线数 */
-    private int longitudeNum = 5;
+    private int mLongitudeNum = 5;
     /* 纬线数 */
-    private int latitudeNum = 5;
+    private int mLatitudeNum = 5;
+
+    private Paint mAxisPaint;
+    private Paint mLongitudeLatitudePaint;
 
     protected IQuadrant dataQuadrant = new Quadrant(this) {
         @Override
@@ -55,23 +59,22 @@ public class Chart extends View implements IChart {
     };
 
     public Chart(Context context, AttributeSet attrs) {
-        super(context, attrs);
+        this(context, attrs, 0);
     }
 
     public Chart(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        initView();
     }
 
-    // for performance tracking
-    protected long totalTime = 0;
-    protected long drawCycles = 0;
-    protected long starttime = 0;
+    protected void initView() {
+        mAxisPaint = new AxisPaint();
+        mLongitudeLatitudePaint = new LongitudeLatitudePaint();
+    }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
-        starttime = System.currentTimeMillis();
 
         drawLatitudeLine(canvas);
 
@@ -85,45 +88,44 @@ public class Chart extends View implements IChart {
 
     /* 绘制X轴 */
     protected void drawXAxis(Canvas canvas) {
-        canvas.drawLine(dataQuadrant.getQuadrantStartX(), dataQuadrant.getQuadrantHeight(), dataQuadrant.getQuadrantWidth(), dataQuadrant.getQuadrantHeight(), new AxisPaint());
-        canvas.drawLine(dataQuadrant.getQuadrantStartX(), dataQuadrant.getQuadrantStartY(), dataQuadrant.getQuadrantWidth(), dataQuadrant.getQuadrantStartY(), new AxisPaint());
+        canvas.drawLine(dataQuadrant.getQuadrantStartX(), dataQuadrant.getQuadrantHeight(), dataQuadrant.getQuadrantWidth(), dataQuadrant.getQuadrantHeight(), mAxisPaint);
+        canvas.drawLine(dataQuadrant.getQuadrantStartX(), dataQuadrant.getQuadrantStartY(), dataQuadrant.getQuadrantWidth(), dataQuadrant.getQuadrantStartY(), mAxisPaint);
     }
 
     /* 绘制Y轴 */
     protected void drawYAxis(Canvas canvas) {
-        canvas.drawLine(dataQuadrant.getQuadrantStartX(), getBorderWidth(), dataQuadrant.getQuadrantStartX(), dataQuadrant.getQuadrantHeight(), new AxisPaint());
-        canvas.drawLine(dataQuadrant.getQuadrantWidth(), getBorderWidth(), dataQuadrant.getQuadrantWidth(), dataQuadrant.getQuadrantHeight(), new AxisPaint());
+        canvas.drawLine(dataQuadrant.getQuadrantStartX(), getBorderWidth(), dataQuadrant.getQuadrantStartX(), dataQuadrant.getQuadrantHeight(), mAxisPaint);
+        canvas.drawLine(dataQuadrant.getQuadrantWidth(), getBorderWidth(), dataQuadrant.getQuadrantWidth(), dataQuadrant.getQuadrantHeight(), mAxisPaint);
     }
 
     /* 绘制经线 */
     protected void drawLongitudeLine(Canvas canvas) {
         float postOffset = longitudePostOffset();
         float offset = longitudeOffset();
-        for (int i = 0; i < longitudeNum; i++) {
+        for (int i = 0; i < mLongitudeNum; i++) {
             Path path = new Path();
             path.moveTo(offset + i * postOffset, dataQuadrant.getQuadrantStartX());
             path.lineTo(offset + i * postOffset, dataQuadrant.getQuadrantHeight());
-            canvas.drawPath(path, new LongitudeLatitudePaint());
+            canvas.drawPath(path, mLongitudeLatitudePaint);
         }
     }
 
     protected void drawLatitudeLine(Canvas canvas) {
 
-        LongitudeLatitudePaint paint = new LongitudeLatitudePaint();
-        float postOffset = (dataQuadrant.getQuadrantPaddingHeight() - 10) / (latitudeNum - 1);
+        float postOffset = (dataQuadrant.getQuadrantPaddingHeight() - 10) / (mLatitudeNum - 1);
         float offset = dataQuadrant.getQuadrantPaddingHeight();
         float startFrom = dataQuadrant.getQuadrantStartX();
 
-        for (int i = 0; i < latitudeNum; i++) {
+        for (int i = 0; i < mLatitudeNum; i++) {
             Path path = new Path();
             path.moveTo(startFrom, offset - i * postOffset);
             path.lineTo(startFrom + dataQuadrant.getQuadrantWidth(), offset - i * postOffset);
-            if (i == (latitudeNum - 1) / 2) {
-                paint.setColor(Color.parseColor("#1478f0"));
+            if (i == (mLatitudeNum - 1) / 2) {
+                mLongitudeLatitudePaint.setColor(Color.parseColor("#1478f0"));
             } else {
-                paint.setColor(Color.BLACK);
+                mLongitudeLatitudePaint.setColor(Color.BLACK);
             }
-            canvas.drawPath(path, paint);
+            canvas.drawPath(path, mLongitudeLatitudePaint);
         }
 
     }
@@ -162,12 +164,12 @@ public class Chart extends View implements IChart {
     }
 
     public float longitudePostOffset() {
-        float stickWidth = dataQuadrant.getQuadrantPaddingWidth() / displayNumber;
-        return (this.dataQuadrant.getQuadrantPaddingWidth() - stickWidth) / (longitudeNum - 1);
+        float stickWidth = dataQuadrant.getQuadrantPaddingWidth() / mDisplayNumber;
+        return (this.dataQuadrant.getQuadrantPaddingWidth() - stickWidth) / (mLongitudeNum - 1);
     }
 
     public float longitudeOffset() {
-        float stickWidth = dataQuadrant.getQuadrantPaddingWidth() / displayNumber;
+        float stickWidth = dataQuadrant.getQuadrantPaddingWidth() / mDisplayNumber;
         return dataQuadrant.getQuadrantPaddingStartX() + stickWidth / 2;
     }
 
@@ -176,34 +178,34 @@ public class Chart extends View implements IChart {
      *
      * @return
      */
-    public float getElementWidth(){
-        return dataQuadrant.getQuadrantPaddingWidth() / displayNumber;
+    public float getElementWidth() {
+        return dataQuadrant.getQuadrantPaddingWidth() / mDisplayNumber;
     }
 
     public void touchDown(PointF pt) {
-        this.touchPoint = pt;
+        this.mTouchPoint = pt;
         this.postInvalidate();
     }
 
     public void touchMoved(PointF pt) {
-        this.touchPoint = pt;
+        this.mTouchPoint = pt;
         this.postInvalidate();
     }
 
     public void touchUp() {
-        this.touchPoint = null;
+        this.mTouchPoint = null;
         this.postInvalidate();
     }
 
     @Override
     public Chart withPrevClosePrice(double prevClosePrice) {
-        this.prevClosePrice = prevClosePrice;
+        this.mPrevClosePrice = prevClosePrice;
         return this;
     }
 
     @Override
     public Chart withMinDisplayNum(int minDisplayNum) {
-        this.minDisplayNum = minDisplayNum;
+        this.mMinDisplayNum = minDisplayNum;
         return this;
     }
 
@@ -215,17 +217,17 @@ public class Chart extends View implements IChart {
 
     @Override
     public Chart withDisplayFrom(int displayFrom) {
-        this.displayFrom = displayFrom;
+        this.mDisplayFrom = displayFrom;
         return this;
     }
 
     @Override
     public Chart withDisplayNumber(int displayNumber) {
-        this.displayNumber = displayNumber;
+        this.mDisplayNumber = displayNumber;
         return this;
     }
 
     public float getBorderWidth() {
-        return borderWidth;
+        return mBorderWidth;
     }
 }

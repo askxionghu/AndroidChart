@@ -6,14 +6,11 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
-import android.text.TextPaint;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import java.util.List;
 
-import me.wangyuwei.trend.common.AxisPaint;
 import me.wangyuwei.trend.common.TouchGestureDetector;
 import me.wangyuwei.trend.common.TrendAreaPaint;
 import me.wangyuwei.trend.common.VerticalLinePaint;
@@ -25,15 +22,20 @@ import me.wangyuwei.trend.entity.LineEntity;
  */
 public class TrendChart extends Chart {
 
+
+    private Paint mTrendAreaPaint;
+    private Paint mVerticalLinePaint;
+    private Paint mCrossPaint;
+    private Paint mPaintStock;
     /* Y的最大表示值 */
-    private double maxValue;
+    private double mMaxValue;
     /* Y的最小表示值 */
-    private double minValue;
+    private double mMinValue;
 
-    private float circleX;
-    private float circleY;
+    private float mCircleX;
+    private float mCircleY;
 
-    private List<LineEntity<DateValueEntity>> linesData;
+    private List<LineEntity<DateValueEntity>> mLinesData;
 
     private TouchGestureDetector touchGestureDetector = new TouchGestureDetector();
 
@@ -46,6 +48,18 @@ public class TrendChart extends Chart {
     }
 
     @Override
+    protected void initView() {
+        super.initView();
+        mTrendAreaPaint = new TrendAreaPaint(getMeasuredHeight());
+        mVerticalLinePaint = new VerticalLinePaint();
+        mCrossPaint = new Paint();
+        mCrossPaint.setStyle(Paint.Style.FILL);
+        mCrossPaint.setAntiAlias(true);
+        mPaintStock = new Paint();
+        mPaintStock.setAntiAlias(true);
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         calcDataValueRange();
@@ -55,20 +69,6 @@ public class TrendChart extends Chart {
 
         drawVerticalLine(canvas);
         drawCrossCircle(canvas);
-
-        long drawtime = (System.currentTimeMillis() - starttime);
-        totalTime += drawtime;
-        drawCycles += 1;
-        long average = totalTime / drawCycles;
-
-
-        Paint paint = new Paint();
-        paint.setTextSize(30);
-        paint.setColor(Color.RED);
-        canvas.drawText("Drawtime: " + drawtime + " ms, average: " + average + " ms, cycles: "
-                + drawCycles, dataQuadrant.getQuadrantStartX() + 20, dataQuadrant.getQuadrantHeight() - 20, paint);
-//        Log.i("@=>Drawtime", "Drawtime: " + drawtime + " ms, average: " + average + " ms, cycles: "
-//                + drawCycles);
 
     }
 
@@ -88,24 +88,23 @@ public class TrendChart extends Chart {
             if (lineData == null) {
                 continue;
             }
-            Paint paintStock = new Paint();
-            paintStock.setColor(line.getLineColor());
-            paintStock.setStrokeWidth(line.getLineWidth());
-            paintStock.setAntiAlias(true);
-            lineLength = (dataQuadrant.getQuadrantPaddingWidth() / displayNumber);
+
+            mPaintStock.setColor(line.getLineColor());
+            mPaintStock.setStrokeWidth(line.getLineWidth());
+            lineLength = (dataQuadrant.getQuadrantPaddingWidth() / mDisplayNumber);
             startX = dataQuadrant.getQuadrantPaddingStartX() + lineLength / 2;
             PointF ptFirst = null;
-            for (int j = displayFrom; j < displayFrom + displayNumber; j++) {
+            for (int j = mDisplayFrom; j < mDisplayFrom + mDisplayNumber; j++) {
 
                 float value = lineData.get(j).getValue();
-                float valueY = (float) ((1f - (value - minValue)
-                        / (maxValue - minValue)) * dataQuadrant.getQuadrantPaddingHeight())
+                float valueY = (float) ((1f - (value - mMinValue)
+                        / (mMaxValue - mMinValue)) * dataQuadrant.getQuadrantPaddingHeight())
                         + dataQuadrant.getQuadrantPaddingStartY();
 
-                if (j > displayFrom) {
+                if (j > mDisplayFrom) {
                     if (ptFirst == null) continue;
                     canvas.drawLine(ptFirst.x, ptFirst.y, startX, valueY,
-                            paintStock);
+                            mPaintStock);
                 }
 
                 ptFirst = new PointF(startX, valueY);
@@ -130,20 +129,20 @@ public class TrendChart extends Chart {
                     continue;
                 }
 
-                float lineLength = (dataQuadrant.getQuadrantPaddingWidth() / displayNumber);
+                float lineLength = (dataQuadrant.getQuadrantPaddingWidth() / mDisplayNumber);
                 float startX = dataQuadrant.getQuadrantPaddingStartX() + lineLength / 2;
 
                 Path linePath = new Path();
-                for (int j = displayFrom; j < displayFrom + displayNumber; j++) {
+                for (int j = mDisplayFrom; j < mDisplayFrom + mDisplayNumber; j++) {
                     if (j < 0) continue;
                     float value = lineData.get(j).getValue();
-                    float valueY = (float) ((1f - (value - minValue)
-                            / (maxValue - minValue)) * dataQuadrant.getQuadrantPaddingHeight())
+                    float valueY = (float) ((1f - (value - mMinValue)
+                            / (mMaxValue - mMinValue)) * dataQuadrant.getQuadrantPaddingHeight())
                             + dataQuadrant.getQuadrantPaddingStartY();
-                    if (j == displayFrom) {
+                    if (j == mDisplayFrom) {
                         linePath.moveTo(startX, dataQuadrant.getQuadrantPaddingEndY());
                         linePath.lineTo(startX, valueY);
-                    } else if (j == displayFrom + displayNumber - 1) {
+                    } else if (j == mDisplayFrom + mDisplayNumber - 1) {
                         linePath.lineTo(startX, valueY);
                         linePath.lineTo(startX, dataQuadrant.getQuadrantPaddingEndY());
                     } else {
@@ -152,7 +151,7 @@ public class TrendChart extends Chart {
                     startX = startX + lineLength;
                 }
                 linePath.close();
-                canvas.drawPath(linePath, new TrendAreaPaint(getMeasuredHeight()));
+                canvas.drawPath(linePath, mTrendAreaPaint);
             }
 
         }
@@ -160,31 +159,28 @@ public class TrendChart extends Chart {
 
     protected void drawVerticalLine(Canvas canvas) {
 
-        if (touchPoint == null) return;
+        if (mTouchPoint == null) return;
 
-        calcCircleCoordinate(touchPoint.x);
+        calcCircleCoordinate(mTouchPoint.x);
 
-        if (circleX < 0) return;
+        if (mCircleX < 0) return;
 
         float lineVLength = dataQuadrant.getQuadrantHeight() + getBorderWidth();
 
-        canvas.drawLine(circleX, getBorderWidth(), circleX, lineVLength, new VerticalLinePaint());
+        canvas.drawLine(mCircleX, getBorderWidth(), mCircleX, lineVLength, mVerticalLinePaint);
 
     }
 
     protected void drawCrossCircle(Canvas canvas) {
 
-        if (touchPoint == null) return;
+        if (mTouchPoint == null) return;
 
-        if (circleX < 0) return;
+        if (mCircleX < 0) return;
 
-        Paint paint = new Paint();
-        paint.setColor(Color.parseColor("#323232"));
-        paint.setStyle(Paint.Style.FILL);
-        paint.setAntiAlias(true);
-        canvas.drawCircle(circleX, circleY, 14, paint);
-        paint.setColor(Color.parseColor("#ffffff"));
-        canvas.drawCircle(circleX, circleY, 7, paint);
+        mCrossPaint.setColor(Color.parseColor("#323232"));
+        canvas.drawCircle(mCircleX, mCircleY, 14, mCrossPaint);
+        mCrossPaint.setColor(Color.parseColor("#ffffff"));
+        canvas.drawCircle(mCircleX, mCircleY, 7, mCrossPaint);
     }
 
     @Override
@@ -198,28 +194,28 @@ public class TrendChart extends Chart {
         else if (positionX > dataQuadrant.getQuadrantPaddingEndX())
             positionX = dataQuadrant.getQuadrantPaddingEndX();
 
-        circleX = positionX;
+        mCircleX = positionX;
 
-        //TODO linesData.get(0) 这里是个坑，勿踩，大家自己根据业务来
-        List<DateValueEntity> lineData = linesData.get(0).getLineData();
-        float value = lineData.get(getAxisxIndex(circleX)).getValue();
+        //TODO mLinesData.get(0) 这里是个坑，勿踩，大家自己根据业务来
+        List<DateValueEntity> lineData = mLinesData.get(0).getLineData();
+        float value = lineData.get(getAxisxIndex(mCircleX)).getValue();
 
-        circleY = (float) ((1f - (value - minValue)
-                / (maxValue - minValue)) * dataQuadrant.getQuadrantPaddingHeight())
+        mCircleY = (float) ((1f - (value - mMinValue)
+                / (mMaxValue - mMinValue)) * dataQuadrant.getQuadrantPaddingHeight())
                 + dataQuadrant.getQuadrantPaddingStartY();
     }
 
     private int getAxisxIndex(Object value) {
 
         float graduate = Float.valueOf(getAxisXGraduate(value));
-        int index = (int) Math.floor(graduate * displayNumber);
+        int index = (int) Math.floor(graduate * mDisplayNumber);
 
-        if (index >= displayNumber) {
-            index = displayNumber - 1;
+        if (index >= mDisplayNumber) {
+            index = mDisplayNumber - 1;
         } else if (index < 0) {
             index = 0;
         }
-        index = index + displayFrom;
+        index = index + mDisplayNumber;
 
         return index;
 
@@ -241,7 +237,7 @@ public class TrendChart extends Chart {
 
             if (null != line && line.getLineData().size() > 0) {
 
-                for (int j = displayFrom; j < displayFrom + displayNumber; j++) {
+                for (int j = mDisplayNumber; j < mDisplayNumber + mDisplayNumber; j++) {
 
                     DateValueEntity lineData = line.getLineData().get(j);
 
@@ -259,23 +255,23 @@ public class TrendChart extends Chart {
             }
         }
 
-        if (Math.abs(maxValue - prevClosePrice) > Math.abs(minValue - prevClosePrice)) {
-            minValue = prevClosePrice - Math.abs(maxValue - prevClosePrice);
+        if (Math.abs(maxValue - mPrevClosePrice) > Math.abs(minValue - mPrevClosePrice)) {
+            minValue = mPrevClosePrice - Math.abs(maxValue - mPrevClosePrice);
         } else {
-            maxValue = prevClosePrice + Math.abs(minValue - prevClosePrice);
+            maxValue = mPrevClosePrice + Math.abs(minValue - mPrevClosePrice);
         }
 
-        this.maxValue = maxValue;
-        this.minValue = minValue;
+        this.mMaxValue = maxValue;
+        this.mMinValue = minValue;
 
     }
 
     public List<LineEntity<DateValueEntity>> getLinesData() {
-        return linesData;
+        return mLinesData;
     }
 
     public void setLinesData(List<LineEntity<DateValueEntity>> linesData) {
-        this.linesData = linesData;
+        this.mLinesData = linesData;
     }
 
 }
